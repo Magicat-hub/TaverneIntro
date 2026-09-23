@@ -113,6 +113,10 @@ public class CanTetrisLane : MonoBehaviour
     };
     public string menuSceneName = "Menu";
 
+    [Header("Lumières (QLC+)")]
+    [Tooltip("La barre LED s'allume dans la couleur de l'équipe gagnante (animation « WinAnim » de QLC+, puis couleur fixe). Les couleurs d'équipe servent aussi à l'écran.")]
+    public TavernLightsSettings lights = new TavernLightsSettings();
+
     private static readonly Color[] DefaultPalette =
     {
         new Color(1f, 0.47f, 0.2f), new Color(0.25f, 0.72f, 1f), new Color(0.45f, 0.9f, 0.35f),
@@ -176,6 +180,9 @@ public class CanTetrisLane : MonoBehaviour
         return DefaultPalette[number % DefaultPalette.Length];
     }
 
+    /// <summary>Couleur de l'équipe (0 = équipe 1) : la même que celle de la barre LED.</summary>
+    public Color TeamColor(int team) => TavernLights.TeamColor(team, Color.white);
+
     public int AttackForLines(int count)
     {
         if (attackLines == null || attackLines.Length == 0) return 0;
@@ -186,6 +193,7 @@ public class CanTetrisLane : MonoBehaviour
 
     private void Start()
     {
+        TavernLights.Configure(lights);
         Rounded = MakeRoundedSprite();
         Circle = MakeCircleSprite();
         SetupSprites();
@@ -492,6 +500,7 @@ public class CanTetrisLane : MonoBehaviour
     private void BeginGame()
     {
         knockedOut.Clear();
+        TavernLights.Off();
         foreach (var crate in crates) crate.ResetForMatch();
         state = State.Playing;
         SetBanner(null, null);
@@ -561,9 +570,12 @@ public class CanTetrisLane : MonoBehaviour
                 foreach (var crate in crates)
                     if (winner == null || crate.Score > winner.Score) winner = crate;
 
-            foreach (var crate in crates) crate.Stop(crate == winner && survivor != null);
+            foreach (var crate in crates) crate.Stop(crate == winner);
 
-            overTitle = winner != null ? $"{winner.Name} GAGNE !" : "ÉGALITÉ !";
+            // La barre LED de la taverne s'allume dans la couleur de l'équipe gagnante.
+            if (winner != null) TavernLights.CelebrateWin(winner.team);
+
+            overTitle = winner != null ? $"<color=#{ColorUtility.ToHtmlStringRGB(TeamColor(winner.team))}>{winner.Name}</color> GAGNE !" : "ÉGALITÉ !";
             var scores = new List<string>();
             foreach (var crate in crates) scores.Add($"{crate.Name} : {crate.Score}");
             overSubtitle = string.Join("   ·   ", scores);

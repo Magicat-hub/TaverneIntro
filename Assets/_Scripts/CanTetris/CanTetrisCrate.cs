@@ -37,6 +37,7 @@ public class CanTetrisCrate
     private const int JunkCan = -1;
     private static readonly Color JunkTint = new Color(0.85f, 0.85f, 0.85f);
     private static readonly Color Danger = new Color(1f, 0.28f, 0.22f);
+    private static readonly Color OverlayDark = new Color(0.03f, 0.02f, 0.04f, 0.7f);
 
     private class Piece
     {
@@ -144,6 +145,7 @@ public class CanTetrisCrate
     private SpriteRenderer junkBar;
     private SpriteRenderer overlay;
     private TextMeshPro overlayText;
+    private bool won;
     private readonly List<Effect> effects = new List<Effect>();
 
     private int PlayerCount => (inputs[0] != null ? 1 : 0) + (inputs[1] != null ? 1 : 0);
@@ -209,7 +211,9 @@ public class CanTetrisCrate
         foreach (var input in inputs) input?.ClearBuffer();
 
         overlay.enabled = false;
+        overlay.color = OverlayDark;
         overlayText.text = "";
+        won = false;
         state = State.Playing;
     }
 
@@ -221,9 +225,11 @@ public class CanTetrisCrate
 
         if (won)
         {
-            overlay.enabled = false;
+            // Le casier gagnant s'illumine dans la couleur de l'équipe, comme la barre LED.
+            won = true;
+            overlay.enabled = true;
             overlayText.text = "GAGNÉ !";
-            overlayText.color = new Color(1f, 0.85f, 0.2f);
+            overlayText.color = game.TeamColor(team);
         }
     }
 
@@ -903,7 +909,7 @@ public class CanTetrisCrate
         float maxY = top + 1.6f;
         if (versus)
         {
-            NewText("Équipe", new Vector3(0f, top + 1.95f, 0f), 4f, Color.white, TextAlignmentOptions.Center).text = Name;
+            NewText("Équipe", new Vector3(0f, top + 1.95f, 0f), 4f, game.TeamColor(team), TextAlignmentOptions.Center).text = Name;
             maxY = top + 2.3f;
         }
 
@@ -948,7 +954,7 @@ public class CanTetrisCrate
         infoText = NewText("Infos", new Vector3(panelX, statsY - 0.55f, 0f), 5f, Color.white, TextAlignmentOptions.Center);
 
         // Voile « K.O. » / « GAGNÉ ! » par-dessus le casier.
-        overlay = NewPanel("Voile", wellSize + new Vector2(0.3f, 0.3f), new Color(0.03f, 0.02f, 0.04f, 0.7f), OverlayOrder, Vector3.zero);
+        overlay = NewPanel("Voile", wellSize + new Vector2(0.3f, 0.3f), OverlayDark, OverlayOrder, Vector3.zero);
         overlay.enabled = false;
         overlayText = NewText("Voile texte", new Vector3(0f, -wellSize.y * 0.25f, 0f), 9f, Danger, TextAlignmentOptions.Center);   // sous le bandeau central
         overlayText.sortingOrder = OverlayOrder + 1;
@@ -1129,6 +1135,14 @@ public class CanTetrisCrate
             junkBar.transform.localPosition = new Vector3(junkX, -wellSize.y * 0.5f + height * 0.5f, 0f);
             float pulse = 0.75f + 0.25f * Mathf.Sin(t * 10f);
             junkBar.color = Color.Lerp(Danger * pulse, Color.white, junkPunch * 0.6f);
+        }
+
+        if (won)
+        {
+            // Lueur qui pulse dans la couleur de l'équipe.
+            Color glow = game.TeamColor(team);
+            glow.a = 0.22f + 0.14f * Mathf.Sin(t * 5f);
+            overlay.color = glow;
         }
 
         if (!string.IsNullOrEmpty(overlayText.text))
